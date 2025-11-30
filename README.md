@@ -14,7 +14,6 @@ The **Attendance System** is a real-time facial recognition-based application de
 - [File Structure](#file-structure)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
-- [License](#license)
 
 ---
 

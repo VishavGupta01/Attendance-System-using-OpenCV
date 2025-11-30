@@ -103,8 +103,9 @@ def start_camera(camera_index=0):
             update_status("Failed to capture video.", "red")
             break
 
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        frame = cv2.resize(frame, (640, 480))
 
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
         rgb_small_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
 
         if process_this_frame:
@@ -123,7 +124,6 @@ def start_camera(camera_index=0):
                         name = known_face_names[best_match_index]
 
                 face_names.append(name)
-
                 if name != "Unknown":
                     mark_attendance(name)
 
@@ -134,9 +134,7 @@ def start_camera(camera_index=0):
             right *= 4
             bottom *= 4
             left *= 4
-
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-
             cv2.putText(frame, name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
         display_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -155,7 +153,11 @@ def start_camera(camera_index=0):
 def stop_camera():
     global camera_running
     camera_running = False
-    update_status("Camera stopped.", "blue")
+
+    display_frame.configure(image='', text="[ Camera Off ]")
+    display_frame.image = None
+
+    update_status("Camera stopped.", "#F1C40F")
 
 def start_new_session():
     global attendance_set
@@ -173,7 +175,6 @@ def authenticate_user():
     correct_password = config.get('Security', 'PASSWORD', fallback='admin')
 
     user_input = input("Enter password: ")
-    # Strip whitespace just in case
     if user_input.strip() != correct_password.strip():
         print("Access denied")
         exit()
@@ -183,40 +184,66 @@ def main():
     authenticate_user()
 
     global root, display_frame, attendance_log, status_label, camera_running
+
+    COLOR_BG = "#2C3E50"
+    COLOR_FG = "#ECF0F1"
+    COLOR_ACCENT = "#34495E"
+    COLOR_BTN_START = "#27AE60"
+    COLOR_BTN_STOP = "#C0392B"
+    COLOR_BTN_NEW = "#2980B9"
+
     root = tk.Tk()
     root.title("Smart Attendance System")
-    root.geometry("800x600")
+    root.geometry("900x750")
+    root.configure(bg=COLOR_BG)
 
-    display_frame = Label(root)
-    display_frame.pack(pady=10)
+    header_frame = tk.Frame(root, bg=COLOR_ACCENT, pady=10)
+    header_frame.pack(fill=tk.X)
+    title_label = Label(header_frame, text="Smart Face Recognition Attendance",
+                        font=("Helvetica", 18, "bold"), bg=COLOR_ACCENT, fg=COLOR_FG)
+    title_label.pack()
 
-    btn_frame = tk.Frame(root)
-    btn_frame.pack(pady=5)
+    video_container = tk.Frame(root, width=640, height=480, bg="black",
+                            highlightbackground=COLOR_FG, highlightthickness=2)
 
-    start_button = Button(btn_frame, text="Start Camera", command=lambda: threading.Thread(target=start_camera_thread, daemon=True).start(), bg="green", fg="white")
-    start_button.pack(side=tk.LEFT, padx=5)
+    video_container.pack_propagate(False)
+    video_container.pack(pady=20)
 
-    stop_button = Button(btn_frame, text="Stop Camera", command=stop_camera, bg="red", fg="white")
-    stop_button.pack(side=tk.LEFT, padx=5)
+    display_frame = Label(video_container, text="[ Camera Off ]",
+                        font=("Helvetica", 14), bg="black", fg="white")
+    display_frame.pack(fill=tk.BOTH, expand=True)
 
-    new_session_button = Button(btn_frame, text="New Session", command=start_new_session, bg="blue", fg="white")
-    new_session_button.pack(side=tk.LEFT, padx=5)
+    btn_frame = tk.Frame(root, bg=COLOR_BG)
+    btn_frame.pack(pady=10)
 
-    status_label = Label(root, text="Status: Waiting for action", fg="blue")
+    btn_style = {"font": ("Helvetica", 12, "bold"), "width": 15, "pady": 5, "relief": "flat", "fg": "white"}
+
+    start_button = Button(btn_frame, text="Start Camera",
+                        command=lambda: threading.Thread(target=start_camera_thread, daemon=True).start(),
+                          bg=COLOR_BTN_START, **btn_style)
+    start_button.pack(side=tk.LEFT, padx=10)
+
+    stop_button = Button(btn_frame, text="Stop Camera", command=stop_camera, bg=COLOR_BTN_STOP, **btn_style)
+    stop_button.pack(side=tk.LEFT, padx=10)
+
+    new_session_button = Button(btn_frame, text="New Session", command=start_new_session, bg=COLOR_BTN_NEW, **btn_style)
+    new_session_button.pack(side=tk.LEFT, padx=10)
+
+    status_label = Label(root, text="Status: Ready", font=("Helvetica", 10, "italic"), bg=COLOR_BG, fg="#F1C40F")
     status_label.pack(pady=5)
 
-    log_frame = tk.Frame(root)
-    log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    log_frame = tk.Frame(root, bg=COLOR_BG)
+    log_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
 
     scrollbar = Scrollbar(log_frame, orient=VERTICAL)
-    attendance_log = Text(log_frame, height=10, yscrollcommand=scrollbar.set)
-    scrollbar.config(command=attendance_log.yview)
+    attendance_log = Text(log_frame, height=8, yscrollcommand=scrollbar.set,
+                        font=("Consolas", 10), bg="#000000", fg="#00FF00", bd=0)
 
+    scrollbar.config(command=attendance_log.yview)
     scrollbar.pack(side=RIGHT, fill=Y)
     attendance_log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
     camera_running = False
-
     root.mainloop()
 
 def start_camera_thread():
